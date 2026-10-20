@@ -1,0 +1,99 @@
+========================================
+MODELO DE BASE DE DATOS - RED COMERCIAL
+========================================
+
+--- USUARIOS (Base general para todos) --- YA REALIZADO EN MODELS/USER.PY
+• _id: ObjectId
+• tipo_cuenta_principal: string (consumidor, oferente)
+• nombres: string
+• apellido_paterno: string
+• apellido_materno: string
+• correo_registro: string (Personal / OAuth)
+• contrasena: string
+• telefono: string
+• direccion: {
+    pais: string (México)
+    estado: string
+    municipio: string
+    colonia: string
+    calle: string
+    numero_exterior: string
+    numero_interior: string
+    codigo_postal: string
+  }
+• ubicacion_gps: {
+    type: "Point",
+    coordinates: [longitude, latitude] // Formato GeoJSON para MongoDB
+  }
+• foto_perfil: string
+• acepta_terminos: boolean
+• recibe_avisos: boolean
+• correo_verificado: boolean
+• correo_recuperacion: string
+
+--- PERFIL_OFERENTE (Dinámico según sub-rol) ---
+• _id: ObjectId
+• usuario_id: ObjectId (Relación 1 a 1 con USUARIOS)
+• sub_rol: string (estudiante, negocio, freelancer)
+• datos_especificos: {
+    // Si es ESTUDIANTE:
+    institucion_educativa: string
+    correo_institucional_edu: string (Vinculado y verificado por token)
+    estudiante_verificado: boolean
+    programa_carrera: string
+    portafolio_url: string
+    
+    // Si es NEGOCIO / FREELANCER:
+    nombre_publico: string
+    tipo_actividad: string
+    sector: string
+    representacion_legitimidad: boolean
+    nombre_representante: string
+  }
+• descripcion: string
+• productos_servicios: string (ofrece productos, servicios o ambos)
+• catalogos_urls: {
+    general: string
+    productos: string
+    servicios: string
+  }
+• redes_sociales: array de objetos [{ tipo, url }]
+• modalidad_atencion: string (presencial, en línea, mixto)
+• horarios: string (formato 24h, lunes a domingo)
+
+--- OFERTAS (Productos o Servicios de los Oferentes) ---
+• _id: ObjectId
+• usuario_id: ObjectId
+• tipo: string (producto o servicio)
+• titulo: string
+• descripcion: string
+• categorias_tags: array de strings
+• precio: number
+• fecha_plazo_aproximado: string
+• publicado: boolean
+
+--- POSTEOS_NECESIDADES (Demandas de Consumidores u Oferentes) ---
+• _id: ObjectId
+• usuario_id: ObjectId
+• titulo: string
+• descripcion: string
+• categorias_tags: array de strings
+• fecha_plazo_aproximado: string
+• publicado: boolean
+
+--- PETICIONES_CONTACTO (Anti-Spam y Privacidad) ---
+• _id: ObjectId
+• emisor_id: ObjectId (Consumidor u Oferente interesado)
+• receptor_id: ObjectId (Dueño de la oferta o necesidad)
+• publicacion_id: ObjectId
+• mensaje_inicial: string
+• estado: string (pendiente, respondida)
+• fecha_creacion: timestamp (Límite backend: máx. 1 petición cada 12 hrs)
+
+--- NOTIFICACIONES ---
+• _id: ObjectId
+• usuario_id: ObjectId
+• tipo: string (contacto_respondido, aviso)
+• contenido: string (El oferente responde enviando su enlace privado de WhatsApp, correo o red social)
+• leido: boolean
+• fecha: timestamp
