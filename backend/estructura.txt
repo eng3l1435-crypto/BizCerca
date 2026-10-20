@@ -1,0 +1,19 @@
+├── backend/
+│   ├── .env          
+│   ├── .env.example  
+│   ├── requirements.txt         # Dependencias: fastapi, uvicorn, motor, pydantic-settings, scikit-learn
+│   └── app/
+│       ├── agents/              # Implementación de los Marcos PEAS y lógica algorítmica
+│       │   ├── peas_controller.py # Define Percepción (Sensores) y Acción (Actuadores)
+│       │   ├── pathfinding.py   # Algoritmos de geolocalización (A*, Greedy, UCS)
+│       │   └── matchmaker.py    # Algoritmo de similitud semántica (IA)
+│       ├── core/
+│       │   ├── config.py        # Lógica para .env
+│       │   ├── databse.py       #Conexión a la base de datos
+│       │   └── security.py      # Manejo de JWT y OAuth
+│       ├── models/              # Esquemas de Pydantic y colecciones de MongoDB
+│       │   ├── user.py       
+│       │   └── .py      
+│       ├── routers/             # Endpoints (auth, buscador, geolocalizacion)
+│       │   ├── auth.py  
+│       └── main.py              # Instancia de FastAPI y punto de entrada para Uvicorn

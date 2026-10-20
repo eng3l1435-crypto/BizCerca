@@ -1,14 +1,15 @@
-import hashlib
-import secrets
+from pwdlib import PasswordHash
+from pwdlib.hashers.bcrypt import BcryptHasher
+
+# Configuración del hash de contraseñas con Bcrypt
+password_hash = PasswordHash((BcryptHasher(),))
 
 
 def hash_password(password: str) -> str:
-    iterations = 310_000
-    salt = secrets.token_bytes(16)
-    digest = hashlib.pbkdf2_hmac(
-        "sha256",
-        password.encode("utf-8"),
-        salt,
-        iterations,
-    )
-    return f"pbkdf2_sha256${iterations}${salt.hex()}${digest.hex()}"
+    """Genera un hash seguro a partir de la contraseña en texto plano."""
+    return password_hash.hash(password)
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verifica si la contraseña ingresada coincide con el hash guardado."""
+    return password_hash.verify(plain_password, hashed_password)
