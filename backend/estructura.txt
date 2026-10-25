@@ -12,8 +12,25 @@
 │       │   ├── databse.py       #Conexión a la base de datos
 │       │   └── security.py      # Manejo de JWT y OAuth
 │       ├── models/              # Esquemas de Pydantic y colecciones de MongoDB
-│       │   ├── user.py       
-│       │   └── .py      
+│       │   ├── offerer.py       #PERFIL_OFERENTE 
+│       │   ├── offer.py         #OFERTAS       
+│       │   ├── need.py          #POSTEOS_NECESIDADES       
+│       │   ├── contact.py       #PETICIONES_CONTACTO       
+│       │   ├── notification.py  #NOTIFICACIONES                          
+│       │   └── user.py          #USUARIOS_GENERALES
+│       ├── crud/                #Seguridad y UX/UI
+│       │   ├── offerer_crud.py 
+│       │   ├── offer_crud.py        
+│       │   ├── need_crud.py         
+│       │   ├── contact_crud.py             
+│       │   ├── notification_crud.py                           
+│       │   └── user_crud.py         
 │       ├── routers/             # Endpoints (auth, buscador, geolocalizacion)
-│       │   ├── auth.py  
+│       │   ├── auth.py 
+│       │   ├── offerer.py       
+│       │   ├── offer.py                
+│       │   ├── need.py                 
+│       │   ├── contact.py              
+│       │   ├── notification.py                            
+│       │   └── user.py           
 │       └── main.py              # Instancia de FastAPI y punto de entrada para Uvicorn

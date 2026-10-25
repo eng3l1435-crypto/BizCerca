@@ -55,8 +55,20 @@ class UserResponse(User_Base):
             return str(v)
         return v
 
+class LoginRequest(BaseModel):
+    correo: str
+    contrasena: str
+
+class VerificarCorreoRequest(BaseModel):
+    correo: str
+
+class UpdateUserRequest(BaseModel):
+    telefono: str | None = None
+    foto_perfil: str | None = None
+
     model_config = {
         "populate_by_name": True,
         "arbitrary_types_allowed": True
     }
+
 

@@ -1,15 +1,16 @@
-from fastapi import FastAPI 
+from fastapi import FastAPI, Response
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.database import lifespan
-from app.routers.auth import router as auth_router
-
 from app.routers import (
-    empresas,
-    estudiantes,
-    solicitudes,
-    usuarios,
-    usuarios_generales,
-    recomendaciones,
+    auth,
+    user,
+    offerer,
+    offer,
+    need,
+    contact,
+    notification,
+    #recomendaciones PENDIENTE DE MODIFICACIONES
 )
 
 app = FastAPI(
@@ -19,20 +20,31 @@ app = FastAPI(
     lifespan = lifespan
 )
 
-app.include_router(usuarios.router)
-app.include_router(estudiantes.router)
-app.include_router(empresas.router)
-app.include_router(usuarios_generales.router)
-app.include_router(solicitudes.router)
-app.include_router(recomendaciones.router)
+#Configuración de CORS (Vital para que el Frontend se pueda conectar)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # En producción, cambia el "*" por la URL de tu frontend (ej. "http://localhost:3000")
+    allow_credentials=True,
+    allow_methods=["*"],  # Permite GET, POST, PUT, PATCH, DELETE
+    allow_headers=["*"],
+)
 
-# Incluir las rutas de autenticación
-app.include_router(auth_router)
+# Incluir las rutas
+app.include_router(auth.router)
+app.include_router(user.router)
+app.include_router(offerer.router)
+app.include_router(offer.router)
+app.include_router(need.router)
+app.include_router(contact.router)
+app.include_router(notification.router)
+#app.include_router(recomendaciones.router) PENDIENTE
 
-# #Quita los errores: INFO:     127.0.0.1:46922 - "GET / HTTP/1.1" 404 Not Found
-# INFO:     127.0.0.1:46922 - "GET /favicon.ico HTTP/1.1" 404 Not Found
-# INFO:     127.0.0.1:46926 - "GET / HTTP/1.1" 404 Not Found
-#Otorga un estado 200 y solo es para 
-@app.get("/")
+# Otorga un estado 200 a la raíz para comprobar que el servidor corre
+@app.get("/", tags=["Health Check"])
 async def root():
-    return{"Mesagge": "Uvicorn funciona correctamente"}
+    return {"Mensaje": "Uvicorn y FastAPI funcionan correctamente"}
+
+# Silencia el error 404 del favicon que piden los navegadores automáticamente
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return Response(content = "OK", status_code=204)
