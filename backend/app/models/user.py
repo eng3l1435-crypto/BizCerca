@@ -65,6 +65,7 @@ class VerificarCorreoRequest(BaseModel):
 class UpdateUserRequest(BaseModel):
     telefono: str | None = None
     foto_perfil: str | None = None
+    apellido_materno: str | None = None
 
     model_config = {
         "populate_by_name": True,

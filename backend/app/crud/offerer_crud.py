@@ -10,6 +10,15 @@ async def create_offerer(db, offerer_in: OffererCreate):
     if not usuario_base:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario base no encontrado")
 
+    # 1.5 NUEVA VALIDACIÓN: Bloquear a los consumidores puros basándonos en 'tipo_cuenta'
+    tipo_cuenta = usuario_base.get("tipo_cuenta", "consumidor") 
+    
+    if tipo_cuenta == "consumidor":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acceso denegado: Una cuenta de consumidor no puede crear un perfil de oferente."
+        )
+
     # 2. Lógica de "validate_reference": Evitar que un usuario tenga múltiples perfiles
     perfil_existente = await db["perfil_oferente"].find_one({"usuario_id": usuario_oid})
     if perfil_existente:

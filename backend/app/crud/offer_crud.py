@@ -5,7 +5,7 @@ from fastapi import HTTPException, status
 async def create_offer(db, offer_in: OfferCreate):
     usuario_oid = ObjectId(offer_in.usuario_id)
     
-    # Validar que el usuario tenga un perfil de oferente antes de publicar
+    # 1. Validar que el usuario tenga un perfil de oferente antes de publicar
     perfil_oferente = await db["perfil_oferente"].find_one({"usuario_id": usuario_oid})
     if not perfil_oferente:
         raise HTTPException(
@@ -13,6 +13,21 @@ async def create_offer(db, offer_in: OfferCreate):
             detail="Solo los usuarios con un perfil de oferente activo pueden publicar ofertas."
         )
 
+    # 2. VALIDACIÓN CRUZADA: Verificar si el perfil permite crear este tipo de oferta
+    permiso_perfil = perfil_oferente.get("productos_servicios", "ambos") # Puede ser "productos", "servicios" o "ambos"
+    tipo_oferta = offer_in.tipo # Puede ser "producto" o "servicio"
+
+    # Si no tiene permiso para "ambos", validamos que coincida el tipo
+    if permiso_perfil != "ambos":
+        # Usamos startswith para que "productos" coincida con "producto" y "servicios" con "servicio"
+        if not permiso_perfil.startswith(tipo_oferta): 
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Tu perfil está configurado exclusivamente para {permiso_perfil}. No tienes permitido publicar un {tipo_oferta}."
+            )
+
+    # 3. Guardar el documento
+    # Nota: Si agregas URLs o fechas estrictas a las ofertas en el futuro, recuerda poner mode='json'
     documento = offer_in.model_dump(by_alias=True)
     documento["usuario_id"] = usuario_oid
     
