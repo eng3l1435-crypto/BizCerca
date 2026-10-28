@@ -65,7 +65,10 @@ class VerificarCorreoRequest(BaseModel):
 class UpdateUserRequest(BaseModel):
     telefono: str | None = None
     foto_perfil: str | None = None
+<<<<<<< HEAD
     apellido_materno: str | None = None
+=======
+>>>>>>> be4ae60 (Screens Moni)
 
     model_config = {
         "populate_by_name": True,
