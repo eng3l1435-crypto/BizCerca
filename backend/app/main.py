@@ -10,7 +10,7 @@ from app.routers import (
     need,
     contact,
     notification,
-    #recomendaciones PENDIENTE DE MODIFICACIONES
+    recomendaciones 
 )
 
 app = FastAPI(
@@ -37,7 +37,7 @@ app.include_router(offer.router)
 app.include_router(need.router)
 app.include_router(contact.router)
 app.include_router(notification.router)
-#app.include_router(recomendaciones.router) PENDIENTE
+app.include_router(recomendaciones.router) 
 
 # Otorga un estado 200 a la raíz para comprobar que el servidor corre
 @app.get("/", tags=["Health Check"])
