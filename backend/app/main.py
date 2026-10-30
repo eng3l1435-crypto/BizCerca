@@ -10,7 +10,7 @@ from app.routers import (
     need,
     contact,
     notification,
-    recomendaciones 
+    recomendaciones
 )
 
 app = FastAPI(

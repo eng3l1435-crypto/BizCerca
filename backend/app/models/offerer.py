@@ -1,5 +1,6 @@
 from typing import Literal
 from pydantic import BaseModel, Field, HttpUrl, field_validator
+from app.models.mixins import RatingMixin
 from bson import ObjectId
 
 # Submodelos para Datos Específicos
@@ -28,7 +29,7 @@ class RedSocial(BaseModel):
     url: HttpUrl
 
 # Modelo Base
-class OffererBase(BaseModel):
+class OffererBase(RatingMixin):
     sub_rol: Literal["estudiante", "negocio", "freelancer"]
     datos_especificos: DatosEstudiante | DatosNegocioFreelancer
     descripcion: str | None = None

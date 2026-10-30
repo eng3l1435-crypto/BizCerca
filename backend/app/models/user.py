@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from typing import Literal
 from pydantic import BaseModel, EmailStr, Field, field_validator
+from app.models.mixins import RatingMixin
 from bson import ObjectId
 
 #Submodelo para dirección
@@ -24,7 +25,7 @@ class UbicacionGPS(BaseModel):
     )
 
 #Modelo base, campos comunes entre usuarios
-class User_Base(BaseModel):
+class User_Base(RatingMixin):
     tipo_cuenta: Literal["consumidor", "oferente"]
     nombres: str
     apellido_paterno: str
