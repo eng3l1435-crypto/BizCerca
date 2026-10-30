@@ -38,19 +38,6 @@ def evaluar_regla_busqueda(
     )
     publicado = documento.get("publicado") is True
 
-
-# P: está publicada.
-# C: coincide con la categoría buscada.
-# S: coincide con un sinónimo sugerido por Ollama.
-# D: está dentro del radio.
-# R: cumple el rango de precio.
-# Una regla podría ser:
-
-
-# mostrarla si está publicada, coincide por categoría o por sinónimo, y además cumple la distancia y el precio.
-
-    # Regla proposicional: P AND (C OR S).
-    # P = publicado, C = coincide consulta y S = coincide sinónimo.
     mostrar = publicado and (coincide_consulta or coincide_sinonimo)
 
     return mostrar, {

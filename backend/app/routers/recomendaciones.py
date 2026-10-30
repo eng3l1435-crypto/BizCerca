@@ -1,33 +1,23 @@
+from typing import Annotated
+
 from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.concurrency import run_in_threadpool
-from pydantic import BaseModel
 from bson import ObjectId
 from app.core.database import get_database
-from app.schemas import SolicitudRecomendacion
-from app.services.recomendador import recomendar
+from app.models.recomendaciones import CalificacionRequest, SolicitudRecomendacionGeo
 from app.services.rating_service import registrar_calificacion
 from app.services.ai_search import crear_regex_busqueda, expandir_terminos
 from app.services.propositional_search import evaluar_regla_busqueda
+from app.services.recomedar_por_cercania import hill_climbing_recomendacion
 
 router = APIRouter(
     prefix="/recomendaciones",
     tags=["Recomendaciones"]
 )
 
-class CalificacionRequest(BaseModel):
-    usuario_id: str
-    precio: float
-    calidad: float
-
 @router.post("/calificar", status_code=status.HTTP_200_OK)
 async def calificar(datos: CalificacionRequest):
     try:
-        if not (1 <= datos.precio <= 10) or not (1 <= datos.calidad <= 10):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Las calificaciones deben estar entre 1 y 10."
-            )
-        # Pasamos "usuarios" directamente aquí
         resultado = await registrar_calificacion(
             datos.usuario_id,
             datos.precio,
@@ -41,45 +31,39 @@ async def calificar(datos: CalificacionRequest):
             detail=str(e)
         )
 
-from app.services.recomedar_por_cercania import hill_climbing_recomendacion
-
 @router.get("/geo")
 async def obtener_recomendaciones_geo(
-    precio: float = Query(..., ge=1, le=10),
-    calidad: float = Query(..., ge=1, le=10),
-    radio_km: float = Query(..., gt=0),
-    longitud: float = Query(..., ge=-180, le=180),
-    latitud: float = Query(..., ge=-90, le=90),
+    solicitud: Annotated[SolicitudRecomendacionGeo, Query()]
 ):
     db = get_database()
 
-    # 1. Obtener todas las necesidades publicadas
+
     necesidades_cursor = db["posteos_necesidades"].find({"publicado": True})
     necesidades = await necesidades_cursor.to_list(length=100)
 
-    # 2. Mapeo de usuarios para obtener ratings y ubicaciones
     usuario_ids = list(set([ObjectId(n["usuario_id"]) for n in necesidades]))
     usuarios_cursor = db["usuarios"].find({"_id": {"$in": usuario_ids}})
     usuarios_map = {str(u["_id"]): u for u in await usuarios_cursor.to_list(length=100)}
 
-    # 3. Preparar items
+
     items = []
     for n in necesidades:
         u = usuarios_map.get(str(n["usuario_id"]))
         if u and "ubicacion_gps" in u:
             items.append({
                 "id": str(n["_id"]),
+                "usuario_id": str(n["usuario_id"]),
                 "nombre": n["titulo"],
                 "perfil": (u.get("rating_precio", 5), u.get("rating_calidad", 5)),
                 "ubicacion": u["ubicacion_gps"]["coordinates"]
             })
 
-    # 4. Hill Climbing
+    #  Hill Climbing
     resultados = hill_climbing_recomendacion(
-        [precio, calidad],
+        [solicitud.precio, solicitud.calidad],
         items,
-        [longitud, latitud],
-        radio_km
+        [solicitud.longitud, solicitud.latitud],
+        solicitud.radio_km
     )
     return {"recomendaciones": resultados}
 

@@ -8,7 +8,7 @@ from app.crud import (
     update_document,
 )
 from app.database import get_collection
-from app.schemas import UsuarioCreate, UsuarioResponse, UsuarioUpdate
+from app.models.recomendaciones import UsuarioCreate, UsuarioResponse, UsuarioUpdate
 from app.core.security import hash_password
 
 router = APIRouter(prefix="/api/usuarios", tags=["Usuarios"])

@@ -15,7 +15,7 @@ from app.constantes.swaggercostantes import (
     REGISTRAR_SOLICITUD,
 )
 from app.database import get_collection
-from app.schemas import SolicitudCreate, SolicitudUpdate
+from app.models.recomendaciones import SolicitudCreate, SolicitudUpdate
 
 router = APIRouter(prefix="/api/solicitudes-servicio", tags=["Solicitudes de servicio"])
 collection = get_collection("solicitudes_servicio")

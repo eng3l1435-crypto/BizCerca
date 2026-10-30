@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Literal
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from app.models.mixins import RatingMixin
+from app.models.retinGlobal import RatingMixin
 from bson import ObjectId
 
 #Submodelo para dirección
@@ -64,13 +64,14 @@ class VerificarCorreoRequest(BaseModel):
     correo: str
 
 class UpdateUserRequest(BaseModel):
+    nombres: str | None = None
+    apellido_paterno: str | None = None
     telefono: str | None = None
     foto_perfil: str | None = None
     apellido_materno: str | None = None
+    direccion: Direccion | None = None
 
     model_config = {
         "populate_by_name": True,
         "arbitrary_types_allowed": True
     }
-
-

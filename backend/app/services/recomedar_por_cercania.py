@@ -22,6 +22,8 @@ def distancia_haversine(coord1, coord2):
 
 def hill_climbing_recomendacion(usuario_preferencias, items, usuario_ubicacion, radio_km):
 
+    # Premisa de geolocalización: D -> I.
+    # D significa distancia <= radio_km e I significa incluir el perfil en los resultados.
     items_en_radio = [
         item for item in items
         if distancia_haversine(usuario_ubicacion, item["ubicacion"]) <= radio_km

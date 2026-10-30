@@ -1,6 +1,6 @@
 from typing import Literal
 from pydantic import BaseModel, Field, HttpUrl, field_validator
-from app.models.mixins import RatingMixin
+from app.models.retinGlobal import RatingMixin
 from bson import ObjectId
 
 # Submodelos para Datos Específicos
@@ -10,6 +10,9 @@ class DatosEstudiante(BaseModel):
     estudiante_verificado: bool = False
     programa_carrera: str
     portafolio_url: HttpUrl | None = None
+    semestre: str | None = None
+    habilidades: list[str] = []
+    intereses: list[str] = []
 
 class DatosNegocioFreelancer(BaseModel):
     nombre_publico: str
@@ -58,6 +61,8 @@ class UpdateOffererRequest(BaseModel):
     horarios: str | None = None
     descripcion: str | None = None
     productos_servicios: Literal["productos", "servicios", "ambos"] | None = None
+    modalidad_atencion: Literal["presencial", "en línea", "mixto"] | None = None
+    datos_especificos: DatosEstudiante | DatosNegocioFreelancer | None = None
 
     model_config = {
         "populate_by_name": True, 

@@ -7,17 +7,17 @@ async def registrar_calificacion(entidad_id: str, nueva_precio: float, nueva_cal
     if not entidad:
         raise Exception("Entidad no encontrada")
 
-    # 1. Obtener valores actuales
+
     total = entidad.get("total_calificaciones", 0)
     promedio_precio_actual = entidad.get("rating_precio", 0.0)
     promedio_calidad_actual = entidad.get("rating_calidad", 0.0)
 
-    # 2. Calcular nuevos valores
+
     nuevo_total = total + 1
     nuevo_promedio_precio = ((promedio_precio_actual * total) + nueva_precio) / nuevo_total
     nuevo_promedio_calidad = ((promedio_calidad_actual * total) + nueva_calidad) / nuevo_total
 
-    # 3. Guardar en base de datos
+
     await db[coleccion].update_one(
         {"_id": ObjectId(entidad_id)},
         {"$set": {
