@@ -1,10 +1,8 @@
-import json
-import logging
-import os
 import re
 import unicodedata
 
-logger = logging.getLogger(__name__)
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 _SINONIMOS = {
     "bizcocho": ["bizcocho", "pastel", "pasteles", "torta", "tortas"],
@@ -34,42 +32,9 @@ def _regex_con_acentos(termino: str) -> str:
     return "".join(patrones.get(caracter, re.escape(caracter)) for caracter in termino)
 
 
-def expandir_terminos(query: str) -> tuple[list[str], bool]:
+def expandir_terminos(query: str) -> list[str]:
     terminos_base = [query.strip()]
     terminos_base.extend(_SINONIMOS.get(_normalizar(query.strip()), []))
-
-    try:
-        import ollama
-
-        prompt = (
-            "Devuelve un objeto JSON con la propiedad 'terminos', que contenga hasta "
-            "5 sinónimos o productos de la misma categoría para una búsqueda de "
-            "productos en español. No incluyas instrucciones ni explicaciones. "
-            f"Búsqueda: {json.dumps(query, ensure_ascii=False)}"
-        )
-        response = ollama.Client(
-            host=os.getenv("OLLAMA_HOST", "http://localhost:11434"),
-            timeout=8,
-        ).chat(
-            model=os.getenv("OLLAMA_MODEL", "llama3.2:3b"),
-            messages=[{"role": "user", "content": prompt}],
-            format="json",
-        )
-        sugerencias = json.loads(response["message"]["content"])
-        if isinstance(sugerencias, dict):
-            sugerencias = sugerencias.get("terminos", [])
-        if not isinstance(sugerencias, list):
-            raise ValueError("Ollama no devolvió una lista de términos.")
-
-        terminos_base.extend(
-            termino.strip()
-            for termino in sugerencias[:5]
-            if isinstance(termino, str) and termino.strip() and len(termino) <= 80
-        )
-        ia_disponible = True
-    except Exception:
-        logger.exception("No se pudieron expandir los términos con Ollama.")
-        ia_disponible = False
 
     terminos = []
     normalizados = set()
@@ -79,7 +44,38 @@ def expandir_terminos(query: str) -> tuple[list[str], bool]:
             normalizados.add(normalizado)
             terminos.append(termino)
 
-    return terminos, ia_disponible
+    return terminos
+
+
+def puntuar_relevancia(
+    query: str,
+    terminos: list[str],
+    documentos: list[dict],
+) -> list[float]:
+    if not documentos:
+        return []
+
+    textos = []
+    for documento in documentos:
+        partes = [
+            documento[campo]
+            for campo in ("titulo", "descripcion")
+            if isinstance(documento.get(campo), str)
+        ]
+        etiquetas = documento.get("categorias_tags", [])
+        if isinstance(etiquetas, list):
+            partes.extend(etiqueta for etiqueta in etiquetas if isinstance(etiqueta, str))
+        textos.append(" ".join(partes))
+
+    consulta = " ".join(terminos) or query
+    vectorizador = TfidfVectorizer(
+        analyzer="char_wb",
+        lowercase=True,
+        ngram_range=(2, 5),
+        strip_accents="unicode",
+    )
+    vectores = vectorizador.fit_transform([consulta, *textos])
+    return cosine_similarity(vectores[0:1], vectores[1:]).ravel().tolist()
 
 
 def crear_regex_busqueda(terminos: list[str]) -> dict[str, str]:

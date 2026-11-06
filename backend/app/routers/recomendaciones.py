@@ -6,7 +6,11 @@ from bson import ObjectId
 from app.core.database import get_database
 from app.models.recomendaciones import CalificacionRequest, SolicitudRecomendacionGeo
 from app.services.rating_service import registrar_calificacion
-from app.services.ai_search import crear_regex_busqueda, expandir_terminos
+from app.services.ai_search import (
+    crear_regex_busqueda,
+    expandir_terminos,
+    puntuar_relevancia,
+)
 from app.services.propositional_search import evaluar_regla_busqueda
 from app.services.recomedar_por_cercania import hill_climbing_recomendacion
 
@@ -78,7 +82,7 @@ async def buscar_necesidades(query: str = Query(..., min_length=1, max_length=20
 
     db = get_database()
 
-    terminos, ia_disponible = await run_in_threadpool(expandir_terminos, query)
+    terminos = expandir_terminos(query)
     regex_query = crear_regex_busqueda(terminos)
     campos = [
         {"titulo": regex_query},
@@ -116,10 +120,20 @@ async def buscar_necesidades(query: str = Query(..., min_length=1, max_length=20
             resultado["logica_proposicional"] = proposiciones
             resultados.append(resultado)
 
+    puntuaciones = await run_in_threadpool(
+        puntuar_relevancia,
+        query,
+        terminos,
+        resultados,
+    )
+    for resultado, puntuacion in zip(resultados, puntuaciones):
+        resultado["relevancia"] = round(puntuacion, 4)
+    resultados.sort(key=lambda resultado: resultado["relevancia"], reverse=True)
+
     return {
         "query_original": query,
         "terminos_usados": terminos,
-        "ia_disponible": ia_disponible,
+        "modelo_busqueda": "TF-IDF + similitud coseno",
         "regla_aplicada": "publicado AND (coincide_consulta OR coincide_sinonimo)",
         "resultados": resultados
     }
