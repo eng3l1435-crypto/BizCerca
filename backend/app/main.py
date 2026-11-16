@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.database import lifespan
+from app.core.database import lifespan, get_database
 from app.routers import (
     auth,
     user,
@@ -39,6 +39,12 @@ app.include_router(contact.router)
 app.include_router(notification.router)
 app.include_router(recomendaciones.router) 
 
+@app.on_event("startup")
+async def startup_db_client():
+    db = get_database()
+    # Crea el índice 2dsphere en la colección usuarios sobre el campo ubicacion_gps
+    await db["usuarios"].create_index([("ubicacion_gps", "2dsphere")])
+    
 # Otorga un estado 200 a la raíz para comprobar que el servidor corre
 @app.get("/", tags=["Health Check"])
 async def root():

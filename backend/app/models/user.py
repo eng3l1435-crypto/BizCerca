@@ -70,6 +70,7 @@ class UpdateUserRequest(BaseModel):
     foto_perfil: str | None = None
     apellido_materno: str | None = None
     direccion: Direccion | None = None
+    ubicacion_gps: UbicacionGPS | None = None
 
     model_config = {
         "populate_by_name": True,
