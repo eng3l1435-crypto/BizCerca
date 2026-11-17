@@ -9,22 +9,23 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ rolPermitido }: ProtectedRouteProps) {
   const { user } = useAuth();
 
-  // Si no ha iniciado sesión, mandar a /login
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  // Si la ruta exige un rol específico y no coincide, redirigir a su inicio
   if (rolPermitido && user.tipo_cuenta !== rolPermitido) {
     return (
       <Navigate
-        to={user.tipo_cuenta === "oferente" ? "/ofertas" : "/solicitudes"}
+        to={
+          user.tipo_cuenta === "oferente"
+            ? "/mis-publicaciones?tab=ofertas"
+            : "/mis-publicaciones"
+        }
         replace
       />
     );
   }
 
-  // Si tiene permiso, renderizar el Navbar arriba y la página hija abajo (<Outlet />)
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <Navbar />
@@ -38,11 +39,14 @@ export function ProtectedRoute({ rolPermitido }: ProtectedRouteProps) {
 export function PublicRoute() {
   const { user } = useAuth();
 
-  // Si ya inició sesión, evitar que entre de nuevo a /login o /registro
   if (user) {
     return (
       <Navigate
-        to={user.tipo_cuenta === "oferente" ? "/ofertas" : "/solicitudes"}
+        to={
+          user.tipo_cuenta === "oferente"
+            ? "/mis-publicaciones?tab=ofertas"
+            : "/mis-publicaciones"
+        }
         replace
       />
     );

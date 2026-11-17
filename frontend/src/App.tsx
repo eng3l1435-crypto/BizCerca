@@ -4,6 +4,8 @@ import { ProtectedRoute, PublicRoute } from "./components/ProtectedRoute";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import PerfilPage from "./pages/PerfilPage";
+import PublicarPage from "./pages/PublicarPage";
+import MisPublicacionesPage from "./pages/MisPublicacionesPage";
 
 function VistaEnConstruccion({ titulo }: { titulo: string }) {
   return (
@@ -30,9 +32,14 @@ export default function App() {
           {/* Rutas protegidas para cualquier usuario autenticado */}
           <Route element={<ProtectedRoute />}>
             <Route path="/perfil" element={<PerfilPage />} />
+            <Route path="/publicar" element={<PublicarPage />} />
+            <Route
+              path="/mis-publicaciones"
+              element={<MisPublicacionesPage />}
+            />
             <Route
               path="/solicitudes"
-              element={<VistaEnConstruccion titulo="Necesidades" />}
+              element={<Navigate to="/mis-publicaciones" replace />}
             />
             <Route
               path="/explorar"
@@ -52,7 +59,7 @@ export default function App() {
           <Route element={<ProtectedRoute rolPermitido="oferente" />}>
             <Route
               path="/ofertas"
-              element={<VistaEnConstruccion titulo="Mis Ofertas" />}
+              element={<Navigate to="/mis-publicaciones" replace />}
             />
             <Route path="/completar-perfil" element={<PerfilPage />} />
           </Route>
