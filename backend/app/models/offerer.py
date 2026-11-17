@@ -63,6 +63,8 @@ class UpdateOffererRequest(BaseModel):
     productos_servicios: Literal["productos", "servicios", "ambos"] | None = None
     modalidad_atencion: Literal["presencial", "en línea", "mixto"] | None = None
     datos_especificos: DatosEstudiante | DatosNegocioFreelancer | None = None
+    redes_sociales: list[RedSocial] | None = None
+    catalogos_urls: CatalogosURLs | None = None
 
     model_config = {
         "populate_by_name": True, 
