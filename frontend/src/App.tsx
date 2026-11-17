@@ -1,62 +1,65 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
-//import { RegisterForm } from './components/RegisterForm';
-import { Navbar } from "./components/Navbar";
-import { AuthPage } from "./pages/AuthPage";
-import { CompletarPerfil } from './pages/CompletarPerfil';
-import { SolicitudesPage } from './pages/SolicitudesPage';
-import { RecomendadorNegocios } from './components/recomendaciones/RecomendadorNegocios';
-import { OfertasPage } from './pages/OfertasPage';
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext";
+import { ProtectedRoute, PublicRoute } from "./components/ProtectedRoute";
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+import PerfilPage from "./pages/PerfilPage";
 
-//NOTA: LO DE SOLICITUDES ES LO MISMO QUE LO DE NECESIDADES, ES DECIR, QUE AQUI YO LO MANEJO COMO UNA SOLICITUD PERO TIENE EL 
-//MISMO CUERPO QUE UNA NECESIDAD
-
-const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
-  const { user } = useAuth();
-  return user ? children : <Navigate to="/" replace />;
-};
+function VistaEnConstruccion({ titulo }: { titulo: string }) {
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+      <h1 className="text-lg font-bold text-black">{titulo}</h1>
+      <p className="text-xs text-slate-500 mt-1">
+        Módulo listo para conectar con la API.
+      </p>
+    </div>
+  );
+}
 
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased">
-          <Navbar />
-          <Routes>
-            <Route path="/" element={<AuthPage />} />
+        <Routes>
+          {/* Rutas públicas (redirigen si ya hay sesión) */}
+          <Route element={<PublicRoute />}>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/registro" element={<RegisterPage />} />
+          </Route>
+
+          {/* Rutas protegidas para cualquier usuario autenticado */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/perfil" element={<PerfilPage />} />
             <Route
-              path="/perfil"
-              element={
-                <ProtectedRoute>
-                  <CompletarPerfil />
-                </ProtectedRoute>
-              }
-            /> 
-             <Route
               path="/solicitudes"
-              element={ 
-                <ProtectedRoute>
-                  <SolicitudesPage />
-                </ProtectedRoute> 
-              }
-              />
-              <Route
-              path="/recomendaciones"
-              element={
-                <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6">
-                  <RecomendadorNegocios />
-                </div>
-              }
+              element={<VistaEnConstruccion titulo="Necesidades" />}
             />
-
-            <Route path="/ofertas" 
-              element={<OfertasPage />} 
+            <Route
+              path="/explorar"
+              element={<VistaEnConstruccion titulo="Explorar Ofertas" />}
             />
-          </Routes>
+            <Route
+              path="/contactos"
+              element={<VistaEnConstruccion titulo="Peticiones de Contacto" />}
+            />
+            <Route
+              path="/notificaciones"
+              element={<VistaEnConstruccion titulo="Notificaciones" />}
+            />
+          </Route>
 
-          
-        </div>
+          {/* Rutas protegidas exclusivas para Oferentes */}
+          <Route element={<ProtectedRoute rolPermitido="oferente" />}>
+            <Route
+              path="/ofertas"
+              element={<VistaEnConstruccion titulo="Mis Ofertas" />}
+            />
+            <Route path="/completar-perfil" element={<PerfilPage />} />
+          </Route>
+
+          {/* Redirección por defecto */}
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
       </BrowserRouter>
     </AuthProvider>
   );
