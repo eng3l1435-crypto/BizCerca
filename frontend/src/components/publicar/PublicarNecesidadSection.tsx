@@ -2,6 +2,10 @@ import React, { useState } from "react";
 import { ClipboardList } from "lucide-react";
 import { crearNecesidad } from "../../services/publicacionService";
 import TagsInput from "./TagsInput";
+import ImagenPublicacionInput from "./ImagenPublicacionInput";
+import UbicacionPublicacionField, {
+  type UbicacionPublicacionData,
+} from "./UbicacionPublicacionField";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,20 +30,25 @@ export default function PublicarNecesidadSection({
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [fechaLimite, setFechaLimite] = useState("");
+  const [imagenes, setImagenes] = useState<string[]>([]);
+  const [ubicacion, setUbicacion] = useState<UbicacionPublicacionData | null>(
+    null,
+  );
   const [enviando, setEnviando] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     onClearAlerts();
 
-    const tagsFinales = [...tags];
-    if (tagInput.trim()) {
-      tagInput
-        .split(",")
-        .map((t) => t.trim().toLowerCase())
-        .filter((t) => t.length > 0 && !tagsFinales.includes(t))
-        .forEach((t) => tagsFinales.push(t));
-    }
+    const tagsFinales = Array.from(
+      new Set([
+        ...tags,
+        ...tagInput
+          .split(",")
+          .map((t) => t.trim().toLowerCase())
+          .filter(Boolean),
+      ]),
+    );
 
     if (!titulo.trim() || !descripcion.trim() || !fechaLimite.trim()) {
       onError("Completa el título, la descripción y la fecha límite.");
@@ -57,7 +66,12 @@ export default function PublicarNecesidadSection({
         titulo: titulo.trim(),
         descripcion: descripcion.trim(),
         categorias_tags: tagsFinales,
+        imagenes_urls: imagenes,
+        imagen_url: imagenes[0] ?? null,
         fecha_plazo_aproximado: fechaLimite.trim(),
+        direccion_aproximada: ubicacion?.direccion_aproximada.trim() || null,
+        radio_km: ubicacion?.radio_km ?? null,
+        ubicacion_gps: ubicacion?.ubicacion_gps ?? null,
         publicado: true,
         usuario_id: userId,
       });
@@ -67,6 +81,8 @@ export default function PublicarNecesidadSection({
       setTags([]);
       setTagInput("");
       setFechaLimite("");
+      setImagenes([]);
+      setUbicacion(null);
       onSuccess("Tu necesidad se publicó correctamente.");
     } catch (err: any) {
       const detalle = err.response?.data?.detail;
@@ -121,7 +137,7 @@ export default function PublicarNecesidadSection({
             />
           </div>
 
-          {/* Tags y Fecha Límite compactos en 2 columnas */}
+          {/* Tags y Fecha Límite */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
             <TagsInput
               tags={tags}
@@ -144,6 +160,15 @@ export default function PublicarNecesidadSection({
               />
             </div>
           </div>
+
+          {/* Fotos opcionales con ajuste */}
+          <ImagenPublicacionInput imagenes={imagenes} onChange={setImagenes} />
+
+          {/* Ubicación GPS próxima y radio de cobertura */}
+          <UbicacionPublicacionField
+            value={ubicacion}
+            onChange={setUbicacion}
+          />
 
           <div className="flex justify-end pt-2 border-t border-slate-100">
             <Button

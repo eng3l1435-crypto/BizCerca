@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Bell,
@@ -6,18 +6,57 @@ import {
   FolderKanban,
   LogOut,
   Menu,
+  MessageCircle,
   Plus,
   User,
   X,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { obtenerNotificacionesNoLeidas } from "../services/interaccionService";
+import { obtenerMensajesNoLeidos } from "../services/chatService";
 import logoBizCerca from "../assets/BizCerca.png";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const [noLeidas, setNoLeidas] = useState(0);
+  const [mensajesNoLeidos, setMensajesNoLeidos] = useState(0);
+
+  const userId = user?.id || (user as any)?._id;
+
+  const actualizarContadores = useCallback(() => {
+    if (!userId) return;
+    obtenerNotificacionesNoLeidas(userId)
+      .then((lista) => setNoLeidas(lista.length))
+      .catch(() => {});
+    obtenerMensajesNoLeidos(userId)
+      .then((total) => setMensajesNoLeidos(total))
+      .catch(() => {});
+  }, [userId]);
+
+  useEffect(() => {
+    actualizarContadores();
+    const interval = window.setInterval(actualizarContadores, 15000);
+    window.addEventListener("bizcerca:chat-actualizado", actualizarContadores);
+    window.addEventListener(
+      "bizcerca:notificaciones-actualizadas",
+      actualizarContadores,
+    );
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener(
+        "bizcerca:chat-actualizado",
+        actualizarContadores,
+      );
+      window.removeEventListener(
+        "bizcerca:notificaciones-actualizadas",
+        actualizarContadores,
+      );
+    };
+  }, [actualizarContadores, location.pathname]);
 
   if (!user) return null;
 
@@ -77,8 +116,29 @@ export default function Navbar() {
           </nav>
         </div>
 
-        {/* Acciones rápidas derecha: Publicar (+), Notificaciones, Mi Perfil */}
+        {/* Acciones rápidas derecha: Conversaciones, Publicar, Notificaciones, Mi Perfil */}
         <div className="hidden md:flex items-center gap-2">
+          <button
+            type="button"
+            aria-label="Conversaciones"
+            onClick={() => navigate("/conversaciones")}
+            className={`relative group flex items-center h-9 px-2.5 rounded-lg border transition-all duration-300 cursor-pointer ${
+              isActive("/conversaciones")
+                ? "border-indigo-600 bg-indigo-50 text-indigo-700"
+                : "border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-700 hover:bg-indigo-50/70"
+            }`}
+          >
+            <MessageCircle className="w-4 h-4 shrink-0 transition-transform duration-300 group-hover:scale-105" />
+            {mensajesNoLeidos > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white">
+                {mensajesNoLeidos > 9 ? "9+" : mensajesNoLeidos}
+              </span>
+            )}
+            <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 group-hover:max-w-[115px] group-hover:opacity-100 group-hover:ml-1.5 transition-all duration-300 ease-out text-xs font-semibold">
+              Conversaciones
+            </span>
+          </button>
+
           <Link
             to="/publicar"
             aria-label="Publicar"
@@ -98,13 +158,18 @@ export default function Navbar() {
             type="button"
             aria-label="Notificaciones"
             onClick={() => navigate("/notificaciones")}
-            className={`group flex items-center h-9 px-2.5 rounded-lg border transition-all duration-300 cursor-pointer ${
+            className={`relative group flex items-center h-9 px-2.5 rounded-lg border transition-all duration-300 cursor-pointer ${
               isActive("/notificaciones")
                 ? "border-indigo-600 bg-indigo-50 text-indigo-700"
                 : "border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-700 hover:bg-indigo-50/70"
             }`}
           >
             <Bell className="w-4 h-4 shrink-0 transition-transform duration-300 group-hover:rotate-12" />
+            {noLeidas > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white">
+                {noLeidas > 9 ? "9+" : noLeidas}
+              </span>
+            )}
             <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 group-hover:max-w-[115px] group-hover:opacity-100 group-hover:ml-1.5 transition-all duration-300 ease-out text-xs font-semibold">
               Notificaciones
             </span>
@@ -144,6 +209,24 @@ export default function Navbar() {
 
         {/* Botones móviles */}
         <div className="flex md:hidden items-center gap-1.5">
+          <button
+            type="button"
+            aria-label="Conversaciones"
+            onClick={() => navigate("/conversaciones")}
+            className={`relative p-2 rounded-lg border cursor-pointer ${
+              isActive("/conversaciones")
+                ? "border-indigo-600 bg-indigo-50 text-indigo-700"
+                : "border-slate-200 text-slate-600"
+            }`}
+          >
+            <MessageCircle className="w-4 h-4" />
+            {mensajesNoLeidos > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[15px] h-3.5 px-1 rounded-full bg-indigo-600 text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white">
+                {mensajesNoLeidos > 9 ? "9+" : mensajesNoLeidos}
+              </span>
+            )}
+          </button>
+
           <Link
             to="/publicar"
             aria-label="Publicar"
@@ -160,13 +243,18 @@ export default function Navbar() {
             type="button"
             aria-label="Notificaciones"
             onClick={() => navigate("/notificaciones")}
-            className={`p-2 rounded-lg border cursor-pointer ${
+            className={`relative p-2 rounded-lg border cursor-pointer ${
               isActive("/notificaciones")
                 ? "border-indigo-600 bg-indigo-50 text-indigo-700"
                 : "border-slate-200 text-slate-600"
             }`}
           >
             <Bell className="w-4 h-4" />
+            {noLeidas > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[15px] h-3.5 px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white">
+                {noLeidas > 9 ? "9+" : noLeidas}
+              </span>
+            )}
           </button>
 
           <button
@@ -202,6 +290,26 @@ export default function Navbar() {
               {label}
             </Link>
           ))}
+
+          <Link
+            to="/conversaciones"
+            onClick={() => setMenuAbierto(false)}
+            className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold ${
+              isActive("/conversaciones")
+                ? "bg-indigo-50 text-indigo-700"
+                : "text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <MessageCircle className="w-4 h-4" />
+              Conversaciones
+            </span>
+            {mensajesNoLeidos > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] font-bold">
+                {mensajesNoLeidos}
+              </span>
+            )}
+          </Link>
 
           <Link
             to="/publicar"

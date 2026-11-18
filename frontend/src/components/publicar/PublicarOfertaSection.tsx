@@ -5,6 +5,10 @@ import { crearOferta } from "../../services/publicacionService";
 import { obtenerPerfilOferente } from "../../services/perfilService";
 import type { PerfilOferente } from "../../types/offerer";
 import TagsInput from "./TagsInput";
+import ImagenPublicacionInput from "./ImagenPublicacionInput";
+import UbicacionPublicacionField, {
+  type UbicacionPublicacionData,
+} from "./UbicacionPublicacionField";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -46,6 +50,10 @@ export default function PublicarOfertaSection({
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [fechaLimite, setFechaLimite] = useState("");
+  const [imagenes, setImagenes] = useState<string[]>([]);
+  const [ubicacion, setUbicacion] = useState<UbicacionPublicacionData | null>(
+    null,
+  );
   const [enviando, setEnviando] = useState(false);
 
   useEffect(() => {
@@ -66,19 +74,12 @@ export default function PublicarOfertaSection({
   const esTipoPermitido = (tipoSeleccionado: "producto" | "servicio") => {
     if (!perfilOferente) return false;
     if (perfilOferente.productos_servicios === "ambos") return true;
-    if (
-      tipoSeleccionado === "producto" &&
-      perfilOferente.productos_servicios === "productos"
-    ) {
-      return true;
-    }
-    if (
-      tipoSeleccionado === "servicio" &&
-      perfilOferente.productos_servicios === "servicios"
-    ) {
-      return true;
-    }
-    return false;
+    return (
+      (tipoSeleccionado === "producto" &&
+        perfilOferente.productos_servicios === "productos") ||
+      (tipoSeleccionado === "servicio" &&
+        perfilOferente.productos_servicios === "servicios")
+    );
   };
 
   const handleSeleccionarTipo = (nuevoTipo: "producto" | "servicio") => {
@@ -99,14 +100,15 @@ export default function PublicarOfertaSection({
       return;
     }
 
-    const tagsFinales = [...tags];
-    if (tagInput.trim()) {
-      tagInput
-        .split(",")
-        .map((t) => t.trim().toLowerCase())
-        .filter((t) => t.length > 0 && !tagsFinales.includes(t))
-        .forEach((t) => tagsFinales.push(t));
-    }
+    const tagsFinales = Array.from(
+      new Set([
+        ...tags,
+        ...tagInput
+          .split(",")
+          .map((t) => t.trim().toLowerCase())
+          .filter(Boolean),
+      ]),
+    );
 
     const precioNumerico = parseFloat(precio);
     if (
@@ -134,8 +136,13 @@ export default function PublicarOfertaSection({
         titulo: titulo.trim(),
         descripcion: descripcion.trim(),
         categorias_tags: tagsFinales,
+        imagenes_urls: imagenes,
+        imagen_url: imagenes[0] ?? null,
         precio: precioNumerico,
         fecha_plazo_aproximado: fechaLimite.trim(),
+        direccion_aproximada: ubicacion?.direccion_aproximada.trim() || null,
+        radio_km: ubicacion?.radio_km ?? null,
+        ubicacion_gps: ubicacion?.ubicacion_gps ?? null,
         publicado: true,
         usuario_id: userId,
       });
@@ -146,6 +153,8 @@ export default function PublicarOfertaSection({
       setTags([]);
       setTagInput("");
       setFechaLimite("");
+      setImagenes([]);
+      setUbicacion(null);
       onSuccess("Tu oferta se publicó correctamente.");
     } catch (err: any) {
       const detalle = err.response?.data?.detail;
@@ -182,31 +191,26 @@ export default function PublicarOfertaSection({
                 ¿Qué vas a publicar? *
               </Label>
               <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleSeleccionarTipo("producto")}
-                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-semibold cursor-pointer ${
-                    tipo === "producto"
-                      ? "border-indigo-600 bg-indigo-50 text-indigo-700"
-                      : "border-slate-200 text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  <Package className="w-4 h-4" />
-                  Producto
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSeleccionarTipo("servicio")}
-                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-semibold cursor-pointer ${
-                    tipo === "servicio"
-                      ? "border-indigo-600 bg-indigo-50 text-indigo-700"
-                      : "border-slate-200 text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  <Wrench className="w-4 h-4" />
-                  Servicio
-                </button>
+                {(
+                  [
+                    { id: "producto", label: "Producto", icon: Package },
+                    { id: "servicio", label: "Servicio", icon: Wrench },
+                  ] as const
+                ).map(({ id, label, icon: Icon }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => handleSeleccionarTipo(id)}
+                    className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-semibold cursor-pointer ${
+                      tipo === id
+                        ? "border-indigo-600 bg-indigo-50 text-indigo-700"
+                        : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -258,7 +262,7 @@ export default function PublicarOfertaSection({
               />
             </div>
 
-            {/* Tags y Fecha Límite compactos en 2 columnas */}
+            {/* Tags y Fecha Límite */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
               <TagsInput
                 tags={tags}
@@ -286,6 +290,18 @@ export default function PublicarOfertaSection({
               </div>
             </div>
 
+            {/* Fotos opcionales con ajuste */}
+            <ImagenPublicacionInput
+              imagenes={imagenes}
+              onChange={setImagenes}
+            />
+
+            {/* Ubicación GPS próxima y radio de cobertura */}
+            <UbicacionPublicacionField
+              value={ubicacion}
+              onChange={setUbicacion}
+            />
+
             <div className="flex justify-end pt-2 border-t border-slate-100">
               <Button
                 type="submit"
@@ -300,7 +316,7 @@ export default function PublicarOfertaSection({
         </CardContent>
       </Card>
 
-      {/* MODAL RESTRICCIÓN DE TIPO DE PUBLICACIÓN */}
+      {/* Modal restricción de tipo */}
       <Dialog open={modalRestriccion} onOpenChange={setModalRestriccion}>
         <DialogContent className="bg-white text-slate-900 sm:max-w-md">
           <DialogHeader>

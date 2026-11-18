@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ClipboardList, FolderOpen, Package } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  FolderOpen,
+  Package,
+} from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import type { NecesidadResponse, OfertaResponse } from "../types/publicacion";
 import {
@@ -25,6 +31,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+const ITEMS_POR_PAGINA = 6;
+
 export default function MisPublicacionesPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -34,6 +42,7 @@ export default function MisPublicacionesPage() {
   const [necesidades, setNecesidades] = useState<NecesidadResponse[]>([]);
   const [cargando, setCargando] = useState(true);
   const [procesandoId, setProcesandoId] = useState<string | null>(null);
+  const [pagina, setPagina] = useState(1);
 
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +81,7 @@ export default function MisPublicacionesPage() {
   const cambiarTab = (nuevaTab: "ofertas" | "necesidades") => {
     setMensaje(null);
     setError(null);
+    setPagina(1);
     setSearchParams({ tab: nuevaTab });
   };
 
@@ -127,12 +137,25 @@ export default function MisPublicacionesPage() {
   };
 
   const listaActual = tabActiva === "ofertas" ? ofertas : necesidades;
+  const totalPaginas = Math.max(
+    1,
+    Math.ceil(listaActual.length / ITEMS_POR_PAGINA),
+  );
+  const paginaSegura = Math.min(pagina, totalPaginas);
+  const inicio = (paginaSegura - 1) * ITEMS_POR_PAGINA;
+
+  const ofertasPaginadas = ofertas.slice(inicio, inicio + ITEMS_POR_PAGINA);
+  const necesidadesPaginadas = necesidades.slice(
+    inicio,
+    inicio + ITEMS_POR_PAGINA,
+  );
+
   const borrandoActual = Boolean(
     itemBorrando && procesandoId === itemBorrando.id,
   );
 
   return (
-    <div className="max-w-3xl mx-auto space-y-5 pb-10">
+    <div className="max-w-4xl mx-auto space-y-5 pb-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-black">Mis publicaciones</h1>
@@ -215,53 +238,87 @@ export default function MisPublicacionesPage() {
           </Button>
         </div>
       ) : (
-        <div className="space-y-3">
-          {tabActiva === "ofertas"
-            ? ofertas.map((oferta) => (
-                <PublicacionCard
-                  key={oferta.id}
-                  item={{ kind: "oferta", data: oferta }}
-                  procesandoId={procesandoId}
-                  onEditar={() =>
-                    setItemEditando({ kind: "oferta", data: oferta })
-                  }
-                  onToggleEstado={() =>
-                    handleToggleEstado("oferta", oferta.id, oferta.publicado)
-                  }
-                  onBorrar={() =>
-                    setItemBorrando({
-                      kind: "oferta",
-                      id: oferta.id,
-                      titulo: oferta.titulo,
-                    })
-                  }
-                />
-              ))
-            : necesidades.map((necesidad) => (
-                <PublicacionCard
-                  key={necesidad.id}
-                  item={{ kind: "necesidad", data: necesidad }}
-                  procesandoId={procesandoId}
-                  onEditar={() =>
-                    setItemEditando({ kind: "necesidad", data: necesidad })
-                  }
-                  onToggleEstado={() =>
-                    handleToggleEstado(
-                      "necesidad",
-                      necesidad.id,
-                      necesidad.publicado,
-                    )
-                  }
-                  onBorrar={() =>
-                    setItemBorrando({
-                      kind: "necesidad",
-                      id: necesidad.id,
-                      titulo: necesidad.titulo,
-                    })
-                  }
-                />
-              ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {tabActiva === "ofertas"
+              ? ofertasPaginadas.map((oferta) => (
+                  <PublicacionCard
+                    key={oferta.id}
+                    item={{ kind: "oferta", data: oferta }}
+                    procesandoId={procesandoId}
+                    onEditar={() =>
+                      setItemEditando({ kind: "oferta", data: oferta })
+                    }
+                    onToggleEstado={() =>
+                      handleToggleEstado("oferta", oferta.id, oferta.publicado)
+                    }
+                    onBorrar={() =>
+                      setItemBorrando({
+                        kind: "oferta",
+                        id: oferta.id,
+                        titulo: oferta.titulo,
+                      })
+                    }
+                  />
+                ))
+              : necesidadesPaginadas.map((necesidad) => (
+                  <PublicacionCard
+                    key={necesidad.id}
+                    item={{ kind: "necesidad", data: necesidad }}
+                    procesandoId={procesandoId}
+                    onEditar={() =>
+                      setItemEditando({ kind: "necesidad", data: necesidad })
+                    }
+                    onToggleEstado={() =>
+                      handleToggleEstado(
+                        "necesidad",
+                        necesidad.id,
+                        necesidad.publicado,
+                      )
+                    }
+                    onBorrar={() =>
+                      setItemBorrando({
+                        kind: "necesidad",
+                        id: necesidad.id,
+                        titulo: necesidad.titulo,
+                      })
+                    }
+                  />
+                ))}
+          </div>
+
+          {totalPaginas > 1 && (
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={paginaSegura <= 1}
+                onClick={() => setPagina((p) => Math.max(1, p - 1))}
+                className="h-8 px-3 text-xs border-slate-300 text-slate-700 cursor-pointer"
+              >
+                <ChevronLeft className="w-3.5 h-3.5 mr-1" />
+                Anterior
+              </Button>
+
+              <span className="text-xs font-medium text-slate-600">
+                Página {paginaSegura} de {totalPaginas}
+              </span>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={paginaSegura >= totalPaginas}
+                onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
+                className="h-8 px-3 text-xs border-slate-300 text-slate-700 cursor-pointer"
+              >
+                Siguiente
+                <ChevronRight className="w-3.5 h-3.5 ml-1" />
+              </Button>
+            </div>
+          )}
+        </>
       )}
 
       {/* Modal Edición */}
@@ -283,7 +340,7 @@ export default function MisPublicacionesPage() {
         onError={setError}
       />
 
-      {/* Modal Confirmación de Borrado (sin botón X de cierre) */}
+      {/* Modal Confirmación de Borrado */}
       <Dialog
         open={Boolean(itemBorrando)}
         onOpenChange={(open) =>

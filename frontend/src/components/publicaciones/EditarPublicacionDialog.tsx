@@ -8,6 +8,7 @@ import {
   actualizarOferta,
 } from "../../services/publicacionService";
 import TagsInput from "../publicar/TagsInput";
+import ImagenPublicacionInput from "../publicar/ImagenPublicacionInput";
 
 import {
   Dialog,
@@ -46,6 +47,7 @@ export default function EditarPublicacionDialog({
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [fechaLimite, setFechaLimite] = useState("");
+  const [imagenes, setImagenes] = useState<string[]>([]);
   const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
@@ -55,6 +57,15 @@ export default function EditarPublicacionDialog({
     setTags(item.data.categorias_tags || []);
     setTagInput("");
     setFechaLimite(item.data.fecha_plazo_aproximado || "");
+
+    const fotosIniciales =
+      item.data.imagenes_urls && item.data.imagenes_urls.length > 0
+        ? item.data.imagenes_urls
+        : item.data.imagen_url
+          ? [item.data.imagen_url]
+          : [];
+    setImagenes(fotosIniciales);
+
     if (item.kind === "oferta") {
       setPrecio(String(item.data.precio));
     }
@@ -65,19 +76,29 @@ export default function EditarPublicacionDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const tagsFinales = [...tags];
-    if (tagInput.trim()) {
-      tagInput
-        .split(",")
-        .map((t) => t.trim().toLowerCase())
-        .filter((t) => t.length > 0 && !tagsFinales.includes(t))
-        .forEach((t) => tagsFinales.push(t));
-    }
+    const tagsFinales = Array.from(
+      new Set([
+        ...tags,
+        ...tagInput
+          .split(",")
+          .map((t) => t.trim().toLowerCase())
+          .filter(Boolean),
+      ]),
+    );
 
     if (!titulo.trim() || !descripcion.trim() || !fechaLimite.trim()) {
       onError("Completa los campos obligatorios antes de guardar.");
       return;
     }
+
+    const datosComunes = {
+      titulo: titulo.trim(),
+      descripcion: descripcion.trim(),
+      categorias_tags: tagsFinales,
+      imagenes_urls: imagenes,
+      imagen_url: imagenes[0] ?? null,
+      fecha_plazo_aproximado: fechaLimite.trim(),
+    };
 
     setGuardando(true);
     try {
@@ -89,20 +110,15 @@ export default function EditarPublicacionDialog({
           return;
         }
         const actualizada = await actualizarOferta(item.data.id, {
-          titulo: titulo.trim(),
-          descripcion: descripcion.trim(),
+          ...datosComunes,
           precio: precioNum,
-          categorias_tags: tagsFinales,
-          fecha_plazo_aproximado: fechaLimite.trim(),
         });
         onSavedOferta(actualizada);
       } else {
-        const actualizada = await actualizarNecesidad(item.data.id, {
-          titulo: titulo.trim(),
-          descripcion: descripcion.trim(),
-          categorias_tags: tagsFinales,
-          fecha_plazo_aproximado: fechaLimite.trim(),
-        });
+        const actualizada = await actualizarNecesidad(
+          item.data.id,
+          datosComunes,
+        );
         onSavedNecesidad(actualizada);
       }
       onClose();
@@ -115,13 +131,13 @@ export default function EditarPublicacionDialog({
 
   return (
     <Dialog open={Boolean(item)} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="bg-white text-slate-900 sm:max-w-lg">
+      <DialogContent className="bg-white text-slate-900 sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-base font-bold text-black">
             Editar {item.kind === "oferta" ? "Oferta" : "Necesidad"}
           </DialogTitle>
           <DialogDescription className="text-xs text-slate-500">
-            Actualiza los detalles de tu publicación.
+            Actualiza los detalles y fotografías de tu publicación.
           </DialogDescription>
         </DialogHeader>
 
@@ -194,6 +210,8 @@ export default function EditarPublicacionDialog({
               />
             </div>
           </div>
+
+          <ImagenPublicacionInput imagenes={imagenes} onChange={setImagenes} />
 
           <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
             <Button

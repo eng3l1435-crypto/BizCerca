@@ -42,3 +42,17 @@ export interface UsuarioSesion {
   rating_calidad: number;
   total_calificaciones: number;
 }
+
+export interface RedSocialPublica {
+  tipo?: string;
+  plataforma?: string;
+  url: string;
+}
+
+export interface UsuarioPublico {
+  id: string;
+  nombre_publico: string;
+  foto_perfil: string | null;
+  correo_verificado: boolean;
+  redes_sociales?: RedSocialPublica[];
+}

@@ -6,17 +6,9 @@ import RegisterPage from "./pages/RegisterPage";
 import PerfilPage from "./pages/PerfilPage";
 import PublicarPage from "./pages/PublicarPage";
 import MisPublicacionesPage from "./pages/MisPublicacionesPage";
-
-function VistaEnConstruccion({ titulo }: { titulo: string }) {
-  return (
-    <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-      <h1 className="text-lg font-bold text-black">{titulo}</h1>
-      <p className="text-xs text-slate-500 mt-1">
-        Módulo listo para conectar con la API.
-      </p>
-    </div>
-  );
-}
+import ExplorarPage from "./pages/ExplorarPage";
+import ConversacionesPage from "./pages/ConversacionesPage";
+import NotificacionesPage from "./pages/NotificacionesPage";
 
 export default function App() {
   return (
@@ -41,18 +33,13 @@ export default function App() {
               path="/solicitudes"
               element={<Navigate to="/mis-publicaciones" replace />}
             />
-            <Route
-              path="/explorar"
-              element={<VistaEnConstruccion titulo="Explorar Ofertas" />}
-            />
+            <Route path="/explorar" element={<ExplorarPage />} />
+            <Route path="/conversaciones" element={<ConversacionesPage />} />
             <Route
               path="/contactos"
-              element={<VistaEnConstruccion titulo="Peticiones de Contacto" />}
+              element={<Navigate to="/conversaciones" replace />}
             />
-            <Route
-              path="/notificaciones"
-              element={<VistaEnConstruccion titulo="Notificaciones" />}
-            />
+            <Route path="/notificaciones" element={<NotificacionesPage />} />
           </Route>
 
           {/* Rutas protegidas exclusivas para Oferentes */}
