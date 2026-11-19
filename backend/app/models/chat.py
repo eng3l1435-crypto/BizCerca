@@ -31,11 +31,21 @@ class UbicacionChat(BaseModel):
     aproximada: bool = True
 
 
+class PublicacionInteresItem(BaseModel):
+    id: str = ""
+    titulo: str
+    precio: float | None = None
+    fecha: datetime | None = None
+
+    _utc_fecha = field_validator("fecha", mode="before")(_asegurar_utc)
+
+
 class IniciarConversacionRequest(BaseModel):
     usuario_actual_id: str
     otro_usuario_id: str
     publicacion_id: str | None = None
     publicacion_titulo: str | None = None
+    publicacion_precio: float | None = None
     mensaje_inicial: str | None = None
     emisor_mensaje_inicial_id: str | None = None
 
@@ -44,8 +54,13 @@ class ConversacionResponse(MongoBaseModel):
     participantes: list[str]
     publicacion_id: str | None = None
     publicacion_titulo: str | None = None
+    publicaciones_interes: list[PublicacionInteresItem] = Field(default_factory=list)
     ultimo_mensaje: str = ""
     ultima_actualizacion: datetime
+    archivada: bool = False
+    estado_hilo: str = "activa"
+    tiene_solicitud_pendiente: bool = False
+    peticiones_pendientes: int = 0
 
     _utc_actualizacion = field_validator("ultima_actualizacion", mode="before")(
         _asegurar_utc

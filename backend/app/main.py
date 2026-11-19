@@ -12,6 +12,7 @@ from app.routers import (
     notification,
     recomendaciones,
     chat,
+    analisis
 )
 
 app = FastAPI(
@@ -39,7 +40,7 @@ app.include_router(contact.router)
 app.include_router(notification.router)
 app.include_router(recomendaciones.router)
 app.include_router(chat.router)
-
+app.include_router(analisis.router)
 
 @app.on_event("startup")
 async def startup_db_client():

@@ -3,6 +3,43 @@ from bson import ObjectId
 from app.models.notification import NotificationCreate
 
 
+def _variantes_id(val) -> list:
+    s = str(val)
+    return [ObjectId(s), s] if ObjectId.is_valid(s) else [s]
+
+
+async def _descartar_peticiones_asociadas(db, notificaciones: list[dict]) -> None:
+    """Marca como 'descartada' cualquier petición pendiente cuya notificación fue eliminada sin responder."""
+    ahora = datetime.now(timezone.utc)
+    for notif in notificaciones:
+        if notif.get("tipo") != "solicitud_contacto" or notif.get("respondido"):
+            continue
+
+        receptor_val = notif.get("usuario_id")
+        emisor_val = notif.get("emisor_id")
+        if not (receptor_val and emisor_val):
+            continue
+
+        filtro: dict = {
+            "receptor_id": {"$in": _variantes_id(receptor_val)},
+            "emisor_id": {"$in": _variantes_id(emisor_val)},
+            "estado": "pendiente",
+        }
+        pub_val = notif.get("publicacion_id")
+        if pub_val:
+            filtro["publicacion_id"] = {"$in": _variantes_id(pub_val)}
+
+        await db["peticiones_contacto"].update_many(
+            filtro,
+            {
+                "$set": {
+                    "estado": "descartada",
+                    "fecha_descarte": ahora,
+                }
+            },
+        )
+
+
 async def create_notification(db, notification_in: NotificationCreate):
     documento = notification_in.model_dump(by_alias=True)
     documento["usuario_id"] = ObjectId(notification_in.usuario_id)
@@ -67,9 +104,14 @@ async def mark_notification_as_responded(db, notification_id: str):
 
 
 async def soft_delete_notification(db, notification_id: str):
-    """Borrado lógico de una notificación individual."""
+    """Borrado lógico de una notificación individual y descarte de su petición si no fue respondida."""
+    notif_oid = ObjectId(notification_id)
+    notif = await db["notificaciones"].find_one({"_id": notif_oid})
+    if not notif:
+        return None
+
     await db["notificaciones"].update_one(
-        {"_id": ObjectId(notification_id)},
+        {"_id": notif_oid},
         {
             "$set": {
                 "eliminado": True,
@@ -78,19 +120,22 @@ async def soft_delete_notification(db, notification_id: str):
             }
         },
     )
-    return await db["notificaciones"].find_one({"_id": ObjectId(notification_id)})
+    await _descartar_peticiones_asociadas(db, [notif])
+    return await db["notificaciones"].find_one({"_id": notif_oid})
 
 
 async def soft_delete_all_notifications(
     db, usuario_id: str, solo_leidas: bool = False
 ) -> int:
-    """Borrado lógico masivo de las notificaciones de un usuario."""
+    """Borrado lógico masivo de las notificaciones de un usuario y descarte de peticiones no respondidas."""
     filtro: dict = {
         "usuario_id": ObjectId(usuario_id),
         "eliminado": {"$ne": True},
     }
     if solo_leidas:
         filtro["leido"] = True
+
+    a_eliminar = await db["notificaciones"].find(filtro).to_list(length=500)
 
     resultado = await db["notificaciones"].update_many(
         filtro,
@@ -102,4 +147,5 @@ async def soft_delete_all_notifications(
             }
         },
     )
+    await _descartar_peticiones_asociadas(db, a_eliminar)
     return resultado.modified_count
