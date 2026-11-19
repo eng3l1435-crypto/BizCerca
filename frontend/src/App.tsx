@@ -9,6 +9,7 @@ import MisPublicacionesPage from "./pages/MisPublicacionesPage";
 import ExplorarPage from "./pages/ExplorarPage";
 import ConversacionesPage from "./pages/ConversacionesPage";
 import NotificacionesPage from "./pages/NotificacionesPage";
+import AnalisisPage from "./pages/AnalisisPage";
 
 export default function App() {
   return (
@@ -34,6 +35,7 @@ export default function App() {
               element={<Navigate to="/mis-publicaciones" replace />}
             />
             <Route path="/explorar" element={<ExplorarPage />} />
+            <Route path="/analisis" element={<AnalisisPage />} />
             <Route path="/conversaciones" element={<ConversacionesPage />} />
             <Route
               path="/contactos"

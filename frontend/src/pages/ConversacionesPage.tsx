@@ -24,6 +24,7 @@ import {
   SendHorizontal,
   Share2,
   ShieldCheck,
+  Tag,
   Trash2,
   X,
 } from "lucide-react";
@@ -68,6 +69,20 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+interface PublicacionInteresItem {
+  id: string;
+  titulo: string;
+  precio?: number | null;
+  fecha?: string;
+}
+
+type ConversacionExtendida = Conversacion & {
+  publicaciones_interes?: PublicacionInteresItem[];
+  tiene_solicitud_pendiente?: boolean;
+  peticiones_pendientes?: number;
+  estado_hilo?: string;
+};
 
 function parsearFechaUTC(iso: string): Date {
   if (!iso) return new Date(NaN);
@@ -123,12 +138,44 @@ function formatearModalidad(
   return "Mixto (presencial y en línea)";
 }
 
+function extraerTarjetaInteres(contenido: string): {
+  esReactivacion: boolean;
+  tituloInteres: string | null;
+  cuerpoMensaje: string;
+} {
+  if (!contenido) {
+    return { esReactivacion: false, tituloInteres: null, cuerpoMensaje: "" };
+  }
+
+  let lineas = contenido.split("\n");
+  let esReactivacion = false;
+
+  if (lineas[0]?.startsWith("🔄 Reactivación de contacto")) {
+    esReactivacion = true;
+    lineas = lineas.slice(1);
+  }
+
+  if (lineas[0]?.startsWith("📌 Interés en:")) {
+    const tituloInteres = lineas[0].replace("📌 Interés en:", "").trim();
+    const cuerpoMensaje = lineas.slice(1).join("\n").trim();
+    return { esReactivacion, tituloInteres, cuerpoMensaje };
+  }
+
+  return {
+    esReactivacion,
+    tituloInteres: null,
+    cuerpoMensaje: lineas.join("\n").trim(),
+  };
+}
+
 export default function ConversacionesPage() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const userId = user?.id || (user as any)?._id;
 
-  const [conversaciones, setConversaciones] = useState<Conversacion[]>([]);
+  const [conversaciones, setConversaciones] = useState<ConversacionExtendida[]>(
+    [],
+  );
   const [usuariosMap, setUsuariosMap] = useState<
     Record<string, UsuarioPublico>
   >({});
@@ -174,10 +221,11 @@ export default function ConversacionesPage() {
 
     obtenerConversaciones(userId)
       .then(async (lista) => {
-        setConversaciones(lista);
+        const listaExt = lista as ConversacionExtendida[];
+        setConversaciones(listaExt);
         const otrosIds = Array.from(
           new Set(
-            lista
+            listaExt
               .map((c) => c.participantes.find((p) => p !== userId))
               .filter(Boolean) as string[],
           ),
@@ -191,8 +239,8 @@ export default function ConversacionesPage() {
         });
         setUsuariosMap(mapa);
 
-        if (!chatActivoId && lista.length > 0) {
-          setSearchParams({ chat: lista[0].id }, { replace: true });
+        if (!chatActivoId && listaExt.length > 0) {
+          setSearchParams({ chat: listaExt[0].id }, { replace: true });
         }
       })
       .catch(() => {
@@ -235,10 +283,14 @@ export default function ConversacionesPage() {
     return conversaciones.filter((c) => {
       const otroId = c.participantes.find((p) => p !== userId) || "";
       const nombre = usuariosMap[otroId]?.nombre_publico?.toLowerCase() || "";
+      const coincideInteres = (c.publicaciones_interes || []).some((item) =>
+        item.titulo.toLowerCase().includes(q),
+      );
       return (
         nombre.includes(q) ||
         c.ultimo_mensaje.toLowerCase().includes(q) ||
-        (c.publicacion_titulo || "").toLowerCase().includes(q)
+        (c.publicacion_titulo || "").toLowerCase().includes(q) ||
+        coincideInteres
       );
     });
   }, [conversaciones, busquedaChat, usuariosMap, userId]);
@@ -266,6 +318,23 @@ export default function ConversacionesPage() {
   const perfilOferenteActivo = otroUsuarioId
     ? (perfilesOferenteCache[otroUsuarioId] ?? null)
     : null;
+
+  // Lista de todas las secciones/ofertas por las que existe interés en esta conversación
+  const seccionesInteres = useMemo(() => {
+    if (!convActiva) return [];
+    const acumuladas = convActiva.publicaciones_interes || [];
+    if (acumuladas.length > 0) return acumuladas;
+    if (convActiva.publicacion_titulo) {
+      return [
+        {
+          id: convActiva.publicacion_id || "",
+          titulo: convActiva.publicacion_titulo,
+          precio: null,
+        },
+      ];
+    }
+    return [];
+  }, [convActiva]);
 
   const handleAbrirPerfilChat = async () => {
     if (!otroUsuarioId) return;
@@ -379,6 +448,8 @@ export default function ConversacionesPage() {
                     ? "📍 Ubicación compartida"
                     : "📷 Fotografía"),
                 ultima_actualizacion: nuevo.fecha_envio,
+                tiene_solicitud_pendiente: false,
+                peticiones_pendientes: 0,
               }
             : c,
         ),
@@ -466,6 +537,9 @@ export default function ConversacionesPage() {
                   conv.participantes.find((p) => p !== userId) || "";
                 const perfil = usuariosMap[otroId];
                 const activa = conv.id === chatActivoId;
+                const totalSecciones =
+                  conv.publicaciones_interes?.length ||
+                  (conv.publicacion_titulo ? 1 : 0);
 
                 return (
                   <button
@@ -497,9 +571,31 @@ export default function ConversacionesPage() {
                           {formatearHora(conv.ultima_actualizacion)}
                         </span>
                       </div>
+
                       <p className="text-[11px] text-slate-500 truncate mt-0.5">
                         {conv.ultimo_mensaje || "Sin mensajes aún"}
                       </p>
+
+                      {(conv.tiene_solicitud_pendiente ||
+                        totalSecciones > 1) && (
+                        <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+                          {conv.tiene_solicitud_pendiente && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800">
+                              Nueva solicitud pendiente
+                              {conv.peticiones_pendientes &&
+                              conv.peticiones_pendientes > 1
+                                ? ` (${conv.peticiones_pendientes})`
+                                : ""}
+                            </span>
+                          )}
+                          {totalSecciones > 1 && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-indigo-100/80 text-indigo-700">
+                              <Tag className="w-2.5 h-2.5" />
+                              {totalSecciones} ofertas de interés
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </button>
                 );
@@ -523,58 +619,85 @@ export default function ConversacionesPage() {
           ) : (
             <>
               {/* Cabecera superior clicable para abrir info del perfil */}
-              <header className="px-4 py-3 bg-white border-b border-slate-200 flex items-center justify-between gap-3 shrink-0">
-                <button
-                  type="button"
-                  onClick={handleAbrirPerfilChat}
-                  title="Ver información del perfil"
-                  className="flex items-center gap-3 min-w-0 text-left rounded-xl p-1 -m-1 hover:bg-slate-50 transition-colors cursor-pointer group"
-                >
-                  <Avatar className="h-10 w-10 border border-slate-200 shrink-0 group-hover:ring-2 group-hover:ring-indigo-100 transition-all">
-                    <AvatarImage
-                      src={otroUsuario?.foto_perfil || undefined}
-                      alt={otroUsuario?.nombre_publico || "Usuario"}
-                    />
-                    <AvatarFallback className="bg-indigo-100 text-indigo-700 text-xs font-bold">
-                      {obtenerIniciales(otroUsuario?.nombre_publico)}
-                    </AvatarFallback>
-                  </Avatar>
+              <header className="px-4 py-3 bg-white border-b border-slate-200 space-y-2 shrink-0">
+                <div className="flex items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={handleAbrirPerfilChat}
+                    title="Ver información del perfil"
+                    className="flex items-center gap-3 min-w-0 text-left rounded-xl p-1 -m-1 hover:bg-slate-50 transition-colors cursor-pointer group"
+                  >
+                    <Avatar className="h-10 w-10 border border-slate-200 shrink-0 group-hover:ring-2 group-hover:ring-indigo-100 transition-all">
+                      <AvatarImage
+                        src={otroUsuario?.foto_perfil || undefined}
+                        alt={otroUsuario?.nombre_publico || "Usuario"}
+                      />
+                      <AvatarFallback className="bg-indigo-100 text-indigo-700 text-xs font-bold">
+                        {obtenerIniciales(otroUsuario?.nombre_publico)}
+                      </AvatarFallback>
+                    </Avatar>
 
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className="text-sm font-bold text-slate-900 truncate group-hover:text-indigo-700 transition-colors">
-                        {otroUsuario?.nombre_publico || "Usuario"}
-                      </h2>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h2 className="text-sm font-bold text-slate-900 truncate group-hover:text-indigo-700 transition-colors">
+                          {otroUsuario?.nombre_publico || "Usuario"}
+                        </h2>
 
-                      {otroUsuario?.correo_verificado ? (
-                        <Badge
-                          variant="secondary"
-                          className="bg-emerald-50 text-emerald-700 text-[11px] font-semibold gap-1"
-                        >
-                          <BadgeCheck className="w-3.5 h-3.5" />
-                          Verificado
-                        </Badge>
-                      ) : (
-                        <Badge
-                          variant="secondary"
-                          className="bg-amber-50 text-amber-700 text-[11px] font-semibold gap-1"
-                        >
-                          <Clock className="w-3 h-3" />
-                          Por verificar
-                        </Badge>
-                      )}
+                        {otroUsuario?.correo_verificado ? (
+                          <Badge
+                            variant="secondary"
+                            className="bg-emerald-50 text-emerald-700 text-[11px] font-semibold gap-1"
+                          >
+                            <BadgeCheck className="w-3.5 h-3.5" />
+                            Verificado
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="secondary"
+                            className="bg-amber-50 text-amber-700 text-[11px] font-semibold gap-1"
+                          >
+                            <Clock className="w-3 h-3" />
+                            Por verificar
+                          </Badge>
+                        )}
+                      </div>
+
+                      <p className="text-[11px] text-slate-500 truncate">
+                        {seccionesInteres.length === 1
+                          ? `Ref: ${seccionesInteres[0].titulo} • `
+                          : seccionesInteres.length > 1
+                            ? `Interés en ${seccionesInteres.length} publicaciones • `
+                            : ""}
+                        <span className="text-indigo-600/80 group-hover:underline">
+                          Ver perfil
+                        </span>
+                      </p>
                     </div>
+                  </button>
+                </div>
 
-                    <p className="text-[11px] text-slate-500 truncate">
-                      {convActiva.publicacion_titulo
-                        ? `Ref: ${convActiva.publicacion_titulo} • `
-                        : ""}
-                      <span className="text-indigo-600/80 group-hover:underline">
-                        Ver perfil
+                {/* Franja con todas las secciones/ofertas por las que hay interés */}
+                {seccionesInteres.length > 1 && (
+                  <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-slate-100">
+                    <span className="text-[10px] font-semibold text-slate-500 mr-1">
+                      Secciones de interés:
+                    </span>
+                    {seccionesInteres.map((sec, idx) => (
+                      <span
+                        key={`${sec.id || sec.titulo}-${idx}`}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 border border-indigo-200/80 text-[11px] font-medium text-indigo-800"
+                      >
+                        <Tag className="w-3 h-3 text-indigo-600 shrink-0" />
+                        <span>{sec.titulo}</span>
+                        {typeof sec.precio === "number" && sec.precio > 0 && (
+                          <span className="text-indigo-600 font-semibold">
+                            (${sec.precio.toLocaleString("es-MX")})
+                          </span>
+                        )}
                       </span>
-                    </p>
+                    ))}
                   </div>
-                </button>
+                )}
               </header>
 
               {/* Área de mensajes agrupada por fechas */}
@@ -597,6 +720,8 @@ export default function ConversacionesPage() {
 
                       {grupo.items.map((msg) => {
                         const esMio = msg.emisor_id === userId;
+                        const { esReactivacion, tituloInteres, cuerpoMensaje } =
+                          extraerTarjetaInteres(msg.contenido);
 
                         return (
                           <div
@@ -661,6 +786,33 @@ export default function ConversacionesPage() {
                                 </p>
                               ) : (
                                 <div className="space-y-1.5">
+                                  {esReactivacion && (
+                                    <div
+                                      className={`text-[10px] font-semibold uppercase tracking-wide ${
+                                        esMio
+                                          ? "text-indigo-200"
+                                          : "text-amber-700"
+                                      }`}
+                                    >
+                                      🔄 Reactivación de contacto
+                                    </div>
+                                  )}
+
+                                  {tituloInteres && (
+                                    <div
+                                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[11px] font-semibold ${
+                                        esMio
+                                          ? "bg-indigo-700/70 border-indigo-400/40 text-white"
+                                          : "bg-white/90 border-[#DFD3C0] text-indigo-900"
+                                      }`}
+                                    >
+                                      <Tag className="w-3.5 h-3.5 shrink-0" />
+                                      <span>
+                                        Interesado en: {tituloInteres}
+                                      </span>
+                                    </div>
+                                  )}
+
                                   {msg.imagen_url && (
                                     <img
                                       src={msg.imagen_url}
@@ -701,9 +853,9 @@ export default function ConversacionesPage() {
                                     </a>
                                   )}
 
-                                  {msg.contenido && (
+                                  {cuerpoMensaje && (
                                     <p className="text-xs sm:text-[13px] whitespace-pre-line leading-relaxed pr-4">
-                                      {msg.contenido}
+                                      {cuerpoMensaje}
                                     </p>
                                   )}
                                 </div>

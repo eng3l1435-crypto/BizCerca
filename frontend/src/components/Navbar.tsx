@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
+  BarChart3,
   Bell,
   Compass,
   FolderKanban,
@@ -78,6 +79,11 @@ export default function Navbar() {
       label: "Mis publicaciones",
       path: "/mis-publicaciones",
       icon: FolderKanban,
+    },
+    {
+      label: "Análisis",
+      path: "/analisis",
+      icon: BarChart3,
     },
   ];
 
