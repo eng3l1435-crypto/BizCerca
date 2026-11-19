@@ -12,7 +12,13 @@ from app.routers import (
     notification,
     recomendaciones,
     chat,
-    analisis
+    analisis,
+    algoritmo_genetico,
+    arbol_decision,
+    busqueda_ruta,
+    kmeans,
+    knn,
+    random_forest,
 )
 
 app = FastAPI(
@@ -41,6 +47,12 @@ app.include_router(notification.router)
 app.include_router(recomendaciones.router)
 app.include_router(chat.router)
 app.include_router(analisis.router)
+app.include_router(algoritmo_genetico.router)
+app.include_router(arbol_decision.router)
+app.include_router(busqueda_ruta.router)
+app.include_router(kmeans.router)
+app.include_router(knn.router)
+app.include_router(random_forest.router)
 
 @app.on_event("startup")
 async def startup_db_client():
